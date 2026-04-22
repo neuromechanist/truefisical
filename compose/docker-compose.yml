@@ -1,0 +1,60 @@
+# truefisical — canonical Infisical stack for workstation dev and TrueNAS Custom App installs.
+# See docs/install/workstation-dev.md for how to run this locally.
+# Env values come from a .env file at the repo root (copy env/infisical.env.example first).
+
+services:
+  backend:
+    image: infisical/infisical:v0.159.19
+    container_name: truefisical-backend
+    restart: unless-stopped
+    pull_policy: always
+    env_file: ../.env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${TRUEFISICAL_HOST_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/status >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - truefisical
+
+  db:
+    image: postgres:16-alpine
+    container_name: truefisical-db
+    restart: unless-stopped
+    env_file: ../.env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - truefisical
+
+  redis:
+    image: redis:7-alpine
+    container_name: truefisical-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - truefisical
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  truefisical:
