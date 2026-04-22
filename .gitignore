@@ -1,0 +1,51 @@
+# --- Claude / local planning (per user global rules) ---
+CLAUDE.md
+.claude/
+.context/plan.md
+.context/ideas.md
+.context/research.md
+.context/scratch_history.md
+.context/scratch_notes.md
+
+# --- Secrets: never commit real env values ---
+.env
+.env.*
+!.env.example
+!env/*.example
+env/*.env
+env/*.local
+!env/*.env.example
+
+# --- Infisical runtime artifacts ---
+*.infisical.json
+.infisical-cache/
+
+# --- TLS / keys ---
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# --- Backups (kept outside repo) ---
+backups/
+*.sql
+*.sql.gz
+*.dump
+
+# --- Docker / compose overrides ---
+docker-compose.override.yml
+compose/*.override.yml
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.bak
+
+# --- Logs ---
+*.log
+logs/
