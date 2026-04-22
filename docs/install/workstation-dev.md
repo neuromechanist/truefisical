@@ -2,7 +2,7 @@
 
 Run the full truefisical stack on your laptop with Docker Compose. Use this for hacking on the compose file, trying upgrades, or previewing changes before deploying to TrueNAS.
 
-> Last smoke-tested: 2026-04-22 against Infisical v0.159.19, Postgres 16-alpine, Redis 7-alpine on macOS (Darwin) with Docker Desktop.
+> Last smoke-tested: 2026-04-22 against Infisical v0.159.19, Postgres 16-alpine, Redis 7-alpine on macOS Darwin 25.4.0 with Docker 29.4.0 / Compose v5.1.2. Backend healthy, `/api/status` returned HTTP 200.
 
 ## Prerequisites
 
@@ -25,11 +25,12 @@ Fill in the **REQUIRED** block in `.env`. For local dev you can generate fresh s
 # ENCRYPTION_KEY — 32-byte hex
 openssl rand -hex 16
 
-# AUTH_SECRET — 32-byte base64
+# AUTH_SECRET — 32-byte base64 (used as opaque JWT signing secret, not in URLs)
 openssl rand -base64 32
 
-# POSTGRES_PASSWORD — anything strong and random
-openssl rand -base64 24
+# POSTGRES_PASSWORD — must be URL-safe (no /, +, @, ?) since it's embedded
+# into DB_CONNECTION_URI without encoding. Hex is the simplest safe choice:
+openssl rand -hex 24
 ```
 
 Paste each generated value into the matching line in `.env`. Leave `SITE_URL=http://localhost:8080` for local dev.
