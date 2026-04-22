@@ -2,7 +2,7 @@
 
 Run the full truefisical stack on your laptop with Docker Compose. Use this for hacking on the compose file, trying upgrades, or previewing changes before deploying to TrueNAS.
 
-> Last smoke-tested: 2026-04-22 against Infisical v0.159.19, Postgres 16-alpine, Redis 7-alpine on macOS Darwin 25.4.0 with Docker 29.4.0 / Compose v5.1.2. Backend healthy, `/api/status` returned HTTP 200.
+> Last smoke-tested: 2026-04-22 against Infisical v0.159.19, Postgres 16-alpine, Redis 7-alpine on macOS Darwin 25.4.0 with Docker 29.4.0 / Compose v5.1.2. Backend healthy, `/api/status` returned HTTP 200. Re-verified after the env-interpolation refactor that drops `env_file` in favor of `${VAR}` substitution.
 
 ## Prerequisites
 
@@ -40,16 +40,16 @@ Paste each generated value into the matching line in `.env`. Leave `SITE_URL=htt
 ## 2. Start the stack
 
 ```bash
-docker compose -f compose/docker-compose.yml up -d
+docker compose -f compose/docker-compose.yml --env-file .env up -d
 ```
 
-This pulls the pinned Infisical, Postgres, and Redis images and brings up three containers: `truefisical-backend`, `truefisical-db`, `truefisical-redis`.
+This pulls the pinned Infisical, Postgres, and Redis images and brings up three containers under the compose project name `compose` (taken from the directory name): `compose-backend-1`, `compose-db-1`, `compose-redis-1`. To use a friendlier project name, add `-p truefisical` to every compose command.
 
 ## 3. Wait for health, then verify
 
 ```bash
 # Backend has a healthcheck on /api/status — wait for it to report healthy.
-docker compose -f compose/docker-compose.yml ps
+docker compose -f compose/docker-compose.yml --env-file .env ps
 
 # Hit the status endpoint directly once the backend is healthy.
 curl -s http://localhost:8080/api/status
@@ -61,11 +61,11 @@ Expect a JSON response (no error body). Then open <http://localhost:8080> in you
 
 ```bash
 # Stop containers, keep volumes (data persists across restarts).
-docker compose -f compose/docker-compose.yml down
+docker compose -f compose/docker-compose.yml --env-file .env down
 
 # Stop containers AND delete volumes (wipes the Postgres database — only do
 # this in a scratch workstation install, never against a real one).
-docker compose -f compose/docker-compose.yml down -v
+docker compose -f compose/docker-compose.yml --env-file .env down -v
 ```
 
 ## Common tweaks
@@ -74,8 +74,8 @@ docker compose -f compose/docker-compose.yml down -v
 
 **View logs:**
 ```bash
-docker compose -f compose/docker-compose.yml logs -f backend
-docker compose -f compose/docker-compose.yml logs -f db
+docker compose -f compose/docker-compose.yml --env-file .env logs -f backend
+docker compose -f compose/docker-compose.yml --env-file .env logs -f db
 ```
 
 **Reset the whole thing:** `docker compose … down -v` then start fresh from step 2. You'll need to redo the admin sign-up.
@@ -84,7 +84,7 @@ docker compose -f compose/docker-compose.yml logs -f db
 
 - **Backend container keeps restarting.** Almost always a missing or malformed env var. Check `docker compose … logs backend` for the message; re-check the REQUIRED block in `.env`.
 - **`/api/status` returns nothing / connection refused.** The backend healthcheck waits up to ~2 minutes for Postgres migrations. Run `docker compose … ps` and look at the `HEALTH` column. Only try `curl` once backend reports `healthy`.
-- **Postgres healthcheck failing.** Confirm `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` in `.env` match what's inside `DB_CONNECTION_URI`. The compose variable substitution only works when those three are literal strings, not references to each other.
+- **Postgres healthcheck failing.** Confirm `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` in `.env` are set and that `POSTGRES_PASSWORD` is URL-safe (no `/`, `+`, `@`, `?`). The backend's `DB_CONNECTION_URI` is composed from these three values via compose interpolation, so a bad password breaks both Postgres and the backend.
 - **Port 8080 already taken.** Set `TRUEFISICAL_HOST_PORT` to something else (see "Common tweaks").
 
 For anything Infisical-specific (login errors, secret UI behavior), see the upstream docs at <https://infisical.com/docs> rather than this file.
